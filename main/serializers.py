@@ -9,7 +9,7 @@ class SignupSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['email', 'username', 'password']
+        fields = ['first_name', 'last_name', 'email', 'username', 'password']
 
     def create(self, validated_data):
         password = validated_data.pop('password')
@@ -18,9 +18,30 @@ class SignupSerializer(serializers.ModelSerializer):
         user.save()
         return user
 
+    def raise_validation_error(self, errors):
+        raise serializers.ValidationError({"error": errors})
+
+    def validate(self, data):
+        errors = {}
+
+        # Explicitly check for existing email
+        if User.objects.filter(email=data.get("email")).exists():
+            errors["email"] = ["Email is already registered"]
+
+        if errors:
+            self.raise_validation_error(errors)
+
+        return data
+
+
+
+
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
+
+    def raise_validation_error(self, errors):
+        raise serializers.ValidationError({"error": errors})
 
     def validate(self, data):
         username = data.get("username")
@@ -29,11 +50,11 @@ class LoginSerializer(serializers.Serializer):
         if username and password:
             user = authenticate(username=username, password=password)
             if not user:
-                raise serializers.ValidationError("Invalid email or password")
+                self.raise_validation_error(["Invalid username or password"])
 
             data["user"] = user
         else:
-            raise serializers.ValidationError("Both username and password are required")
+            self.raise_validation_error(["Both username and password are required"])
 
         return data
 
@@ -53,13 +74,13 @@ class PositionSerializer(serializers.ModelSerializer):
 
 # Serializer for the Candidate model
 class CandidateSerializer(serializers.ModelSerializer):
-    position = PositionSerializer(read_only=True)  # Include position details
+    position = PositionSerializer()  # Include position details
 
     class Meta:
         model = Candidate
         fields = ['id', 'name', 'position', 'votes', 'date_added', 'election']
 
-# Serializer for the Election model
+# Serializer for the Election model 
 class ElectionSerializer(serializers.ModelSerializer):
     host = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)  # Accept host ID for write
     host_details = UserSerializer(source='host', read_only=True)  # Fetch full details for read

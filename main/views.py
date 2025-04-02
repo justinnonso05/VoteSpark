@@ -26,17 +26,9 @@ class SignupView(APIView):
         if serializer.is_valid():
             user = serializer.save()
 
-            # Generate JWT Token on signup
-            refresh = RefreshToken.for_user(user)
             return Response(
                 {
-                    "token": str(refresh.access_token),
-                    "refresh": str(refresh),
-                    "user": {
-                        "id": user.id,
-                        "username": user.username,
-                        "email": user.email,
-                    },
+                    "message": "Registration successful"
                 },
                 status=status.HTTP_201_CREATED,
             )
@@ -45,7 +37,7 @@ class SignupView(APIView):
 
 
 class LoginView(APIView):
-    permission_classes = [AllowAny]  # Anyone can log in
+    permission_classes = [AllowAny]  
 
     @login_schema
     def post(self, request):
@@ -58,7 +50,6 @@ class LoginView(APIView):
             return Response(
                 {
                     "token": str(refresh.access_token),
-                    "refresh": str(refresh),
                     "user": {
                         "id": user.id,
                         "username": user.username,
@@ -73,23 +64,24 @@ class LoginView(APIView):
 
 
 # ViewSet for Election
-class ElectionView(CreateAPIView):
+class CreateElectionView(CreateAPIView):
     queryset = Election.objects.all()
     serializer_class = ElectionSerializer
 
 # ViewSet for Position
-class PositionView(APIView):
+class CreatePositionView(CreateAPIView):
+    queryset = Position.objects.all()
+    serializer_class = PositionSerializer
+
+class ListPositionView(ListAPIView):
     queryset = Position.objects.all()
     serializer_class = PositionSerializer
 
 # ViewSet for Candidate
-class CandidateView(APIView):
+class CreateCandidateView(CreateAPIView):
     queryset = Candidate.objects.all()
     serializer_class = CandidateSerializer
 
-    @candidate_schema
-    def get(self, request, *args, **kwargs):
-        return Response(status=status.HTTP_200_OK)
 
 # ViewSet for Voter
 class VoterView(APIView):
