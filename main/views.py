@@ -1,21 +1,29 @@
 # views.py
-from rest_framework import status
-from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView
+from rest_framework import status, generics
+from rest_framework.generics import ListAPIView, CreateAPIView, RetrieveAPIView, UpdateAPIView, DestroyAPIView, ListCreateAPIView
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import viewsets
 from rest_framework.response import Response
 from .models import Election, Position, Candidate, Voter
 from .serializers import (
-    ElectionSerializer, LoginSerializer, PositionSerializer,
-    CandidateSerializer, SignupSerializer, VoterSerializer
+    LoginSerializer, SignupSerializer, 
+    ElectionSerializer, PositionSerializer, 
+    CandidateSerializer, ElectionDetailSerializer
 )
 from django.db import IntegrityError
 from rest_framework.exceptions import ValidationError
-from .schemas import signup_schema, login_schema, candidate_schema
+from .schemas import (
+    signup_schema, login_schema,
+    create_candidate_schema, create_election_schema,
+    create_position_schema, update_candidate_schema, 
+    update_election_schema, update_position_schema,
+    list_candidates_schema, list_elections_schema,
+    list_positions_schema, get_election_schema,
+)
 
 class SignupView(APIView):
     permission_classes = [AllowAny]  # Anyone can sign up
@@ -63,27 +71,85 @@ class LoginView(APIView):
 
 
 
-# ViewSet for Election
-class CreateElectionView(CreateAPIView):
-    queryset = Election.objects.all()
+class CreateElectionView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = ElectionSerializer
 
-# ViewSet for Position
-class CreatePositionView(CreateAPIView):
-    queryset = Position.objects.all()
+    def perform_create(self, serializer):
+        serializer.save(host=self.request.user)
+
+
+class UpdateElectionView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ElectionSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self):
+        return Election.objects.filter(host=self.request.user)
+
+
+class ElectionListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ElectionDetailSerializer
+
+    def get_queryset(self):
+        return Election.objects.filter(host=self.request.user)
+
+
+class ElectionDetailView(generics.RetrieveAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ElectionDetailSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self):
+        return Election.objects.filter(host=self.request.user)
+
+
+class AddPositionView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = PositionSerializer
 
-class ListPositionView(ListAPIView):
-    queryset = Position.objects.all()
+    def get_queryset(self):
+        return Position.objects.filter(election__host=self.request.user)
+
+
+class UpdatePositionView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = PositionSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self):
+        return Position.objects.filter(election__host=self.request.user)
+
+
+class PositionListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = PositionSerializer
 
-# ViewSet for Candidate
-class CreateCandidateView(CreateAPIView):
-    queryset = Candidate.objects.all()
+    def get_queryset(self):
+        return Position.objects.filter(election__host=self.request.user)
+
+
+class AddCandidateView(generics.CreateAPIView):
+    permission_classes = [IsAuthenticated]
     serializer_class = CandidateSerializer
 
+    def get_queryset(self):
+        return Candidate.objects.filter(election__host=self.request.user)
 
-# ViewSet for Voter
-class VoterView(APIView):
-    queryset = Voter.objects.all()
-    serializer_class = VoterSerializer
+
+class UpdateCandidateView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CandidateSerializer
+    lookup_field = 'pk'
+
+    def get_queryset(self):
+        return Candidate.objects.filter(election__host=self.request.user)
+
+
+class CandidateListView(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = CandidateSerializer
+
+    def get_queryset(self):
+        return Candidate.objects.filter(election__host=self.request.user)

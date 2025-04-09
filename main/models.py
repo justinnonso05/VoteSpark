@@ -5,12 +5,15 @@ from django.contrib.auth.models import User
 class Election(models.Model):
     name = models.CharField(max_length=255)
     host = models.ForeignKey(User, on_delete=models.CASCADE, related_name="elections")
+    start_date = models.DateTimeField(null=True, blank=True)
+    end_date = models.DateTimeField(null=True, blank=True)
     is_ended = models.BooleanField(default=False)
     is_started = models.BooleanField(default=False)
     date_added = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
+
 
 class Position(models.Model):
     title = models.CharField(max_length=100)

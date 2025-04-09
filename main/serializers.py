@@ -11,6 +11,13 @@ class SignupSerializer(serializers.ModelSerializer):
         model = User
         fields = ['first_name', 'last_name', 'email', 'username', 'password']
 
+    def validate_password(self, value):
+        if len(value) < 8:
+            raise serializers.ValidationError("Password must be at least 8 characters long.")
+        if value.isdigit():
+            raise serializers.ValidationError("Password cannot be entirely numeric.")
+        return value
+
     def create(self, validated_data):
         password = validated_data.pop('password')
         user = User.objects.create_user(**validated_data)
@@ -66,40 +73,45 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {'password': {'write_only': True}}
 
 
-# Serializer for the Position model
+class ElectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Election
+        fields = '__all__'
+        read_only_fields = ('host',)
+
+
 class PositionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Position
-        fields = ['id', 'title', 'election']
+        fields = '__all__'
 
-# Serializer for the Candidate model
+
 class CandidateSerializer(serializers.ModelSerializer):
-    position = PositionSerializer()  # Include position details
-
     class Meta:
         model = Candidate
-        fields = ['id', 'name', 'position', 'votes', 'date_added', 'election']
+        fields = '__all__'
 
-# Serializer for the Election model 
-class ElectionSerializer(serializers.ModelSerializer):
-    host = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), write_only=True)  # Accept host ID for write
-    host_details = UserSerializer(source='host', read_only=True)  # Fetch full details for read
-    positions = PositionSerializer(many=True, read_only=True)  # Nested positions
-    candidates = CandidateSerializer(many=True, read_only=True)  # Nested candidates
+
+# Read serializers (nested data for detailed views)
+
+class CandidateReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Candidate
+        fields = '__all__'
+
+
+class PositionReadSerializer(serializers.ModelSerializer):
+    candidates = CandidateReadSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Position
+        fields = '__all__'
+
+
+class ElectionDetailSerializer(serializers.ModelSerializer):
+    positions = PositionReadSerializer(many=True, read_only=True)
+    candidates = CandidateReadSerializer(many=True, read_only=True)
 
     class Meta:
         model = Election
-        fields = [
-            'id', 'name', 'host', 'host_details', 'is_ended', 'is_started', 
-            'date_added', 'positions', 'candidates'
-        ]
-
-
-# Serializer for the Voter model
-class VoterSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Voter
-        fields = [
-            'id', 'election', 'voting_id', 'email', 'student_id', 
-            'is_voted', 'date_joined'
-        ]
+        fields = '__all__'
